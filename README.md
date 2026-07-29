@@ -18,16 +18,34 @@ Move the directory, update one line, and the public URL keeps working.
 
 ## Quick start
 
-Fork this repository, then:
+Two files in a repository of your own. No fork, no clone.
 
 ```bash
-bun install
-cp links.example.json links.json    # your registry
-bun run build                       # writes dist/
+npx linkkeeper build
 ```
 
-Point `linkkeeper.json` at wherever your registry lives, wire the deploy below,
-and the URLs are yours.
+`linkkeeper.json` says where your links come from (see
+[`linkkeeper.example.json`](linkkeeper.example.json)):
+
+```json
+{ "links": { "repo": "you/your-repo", "file": "links.json" } }
+```
+
+`links.json` is the registry, and lives in the repository whose paths move:
+
+```json
+{
+  "version": 1,
+  "defaults": { "repository": "you/your-repo", "ref": "main" },
+  "links": { "react": { "path": "examples/getting-started/react" } }
+}
+```
+
+That writes `dist/`, ready for Cloudflare Pages. Attach a domain and
+`your-domain.com/react` resolves to the path above, permanently.
+
+Upgrading is a version bump, not a merge. Your registry is yours; linkkeeper is
+a dependency.
 
 ## The registry
 
@@ -61,55 +79,64 @@ The `$schema` line gives you autocomplete and inline errors in most editors. It
 points at `main`, so it moves with the format. Once version 1 has survived
 real-world use it will be tagged and this URL should be pinned to that tag.
 
-## Setup
-
-Point `linkkeeper.json` at that registry:
-
-```json
-{ "links": { "repo": "you/repo", "file": "links.json" } }
-```
-
-Then:
+## Commands
 
 ```bash
-bun run build    # write dist/, ready for Cloudflare Pages
-bun run check    # request every destination, fail on any 404
+npx linkkeeper build    # write dist/, ready for Cloudflare Pages
+npx linkkeeper check    # request every destination, fail on any 404
 ```
 
-`dist/` holds the generated `_redirects` plus everything in `public/`. Point a
-Cloudflare Pages project at it and attach your domain.
+`build` takes `--commit <sha>` to pin the revision the registry is read at, and
+`--out <dir>` to write somewhere other than `dist/`.
 
-To redeploy when the registry changes, send a `repository_dispatch` from the
-repository that owns it:
+`dist/` holds the generated `_redirects` and a default 404 page. Drop your own
+`public/` next to `linkkeeper.json` to replace it.
+
+## Deploying
+
+### Cloudflare Pages
+
+The whole output is static, so there is no server to run.
+
+1. Create a Pages project and point it at `dist/`.
+2. Attach your domain.
+3. Run `build` in CI on every registry change, then deploy `dist/`.
+
+A workflow that does that:
+
+```yaml
+- run: npx linkkeeper check
+- run: npx linkkeeper build
+- uses: cloudflare/wrangler-action@v4
+  with:
+    apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    command: pages deploy ./dist --project-name=your-project --branch=main
+```
+
+Run `check` before `build`, so a broken destination fails the pipeline rather
+than reaching the deploy.
+
+### Rebuilding when the registry changes
+
+If the registry lives in a different repository from the deploy, that repository
+has to say when it changed. A `repository_dispatch` carrying the commit is
+enough:
 
 ```yaml
 - run: |
-    gh api repos/you/linkkeeper/dispatches \
+    gh api repos/you/your-deploy-repo/dispatches \
       --field event_type=source-updated \
       --field "client_payload[sha]=${GITHUB_SHA}"
 ```
 
-The sending job needs credentials that can dispatch here. A GitHub App scoped to
-this repository beats a personal token: no expiry, not tied to one person's
-account, and a fresh token per run. A fine-grained PAT with `Contents: read and
-write` works too.
+The receiving workflow passes that SHA to `--commit`, so the deploy is pinned to
+the revision that triggered it rather than to whatever `main` holds by the time
+it runs.
 
-### Order matters
-
-Provision before wiring up the dispatch. A dispatch that cannot authenticate
-should fail the job rather than skip quietly, since a silent skip leaves the
-published redirects stale while every check stays green. That means the sending
-workflow is red from the moment it lands if its credentials are not in place.
-
-1. Create the Pages project, set `CLOUDFLARE_API_TOKEN` and
-   `CLOUDFLARE_ACCOUNT_ID` here, and deploy once. An empty table is a valid
-   deploy and proves the pipeline. If the project is not named after the
-   repository, set the `CLOUDFLARE_PAGES_PROJECT` variable.
-2. Attach the domain and confirm it resolves.
-3. Give the source repository credentials that can dispatch here, and nothing
-   else.
-4. Merge the change that adds the registry and the sending workflow.
-5. Confirm the routes resolve before pointing documentation at them.
+A dispatch that cannot authenticate should fail the job rather than skip
+quietly: a silent skip leaves the published redirects stale while every check
+stays green.
 
 ## Already have a catalog?
 
@@ -170,12 +197,30 @@ Early. It is in production on one link namespace, and the registry format has
 met one existing catalog shape and one hand-authored registry so far. If you try
 it on something different, the interesting question is what did not fit.
 
-Cloudflare Pages is the only deploy target. The core is plain data in, string
-out, so another target is a renderer and a workflow, not a rewrite.
+Cloudflare Pages is the only deploy target today. Two things keep the next one
+cheap rather than a rewrite:
 
-Not built yet, deliberately: telling you a registered path vanished in a pull
-request, and suggesting where it moved. That is the next thing worth adding once
-there are real reorganizations to learn from.
+- Every input becomes the same list of `{slug, destination}`. A target consumes
+  that list and knows nothing about where it came from, which is why
+  `src/targets/` exists as a directory with one file in it.
+- `src/` imports only `node:` builtins and has no dependencies, so it runs on
+  Node, Bun, and Deno as-is. A test asserts this rather than trusting it.
+
+So a self-hosted target is `src/targets/serve.ts` plus a Dockerfile: read the
+same list, answer 302s over HTTP. That image then runs anywhere containers run,
+which is what "GCP support" would mean too — Cloud Run takes an OCI image, so it
+is a deployment guide rather than code. The same is true of Fly, Railway, ECS,
+and a VM.
+
+That is deliberately not built yet. Publishing a container means maintaining a
+second target, and there is no one on the second target. It is also worth
+knowing before writing one that Cloudflare does not document how `_redirects`
+treats query strings, trailing slashes, or case, so matching its behaviour
+exactly needs measuring first. Two targets that disagree on `?utm_source=x`
+would be worse than one target.
+
+Also not built, and the more likely next step: telling you a registered path
+vanished in a pull request, and suggesting where it moved.
 
 ## License
 

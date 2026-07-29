@@ -1,4 +1,4 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 /**
  * linkkeeper CLI.
  *
@@ -9,13 +9,14 @@
  * revision links are read at; without it the source's default branch is
  * resolved to a commit first, so a build is always tied to one revision.
  */
-import { cp, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { cp, mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { parseConfig, type FileConfig } from './config.ts';
 import { RegistryError, buildLinks, type Link } from './registry.ts';
 import { linksFromFile, parseLinksFile } from './links-file.ts';
-import { renderRedirects } from './render.ts';
+import { renderRedirects } from './targets/pages.ts';
 import { fetchEntries, fetchFile, resolveCommit } from './source.ts';
 import { findBrokenLinks } from './verify.ts';
 
@@ -51,14 +52,34 @@ async function load(argv: readonly string[]): Promise<{ links: Link[]; label: st
   return { links: await resolveLinks(config, commit), label: `${sourceRepo(config)}@${commit}` };
 }
 
+/**
+ * The static files copied alongside the redirect table.
+ *
+ * A `public/` in the working directory wins, so a project can ship its own 404
+ * page. Otherwise the one bundled with linkkeeper is used, which is what makes
+ * `linkkeeper build` work in a directory holding nothing but a config.
+ */
+async function resolveStaticDir(): Promise<string> {
+  const local = path.resolve('public');
+  try {
+    await stat(local);
+    return local;
+  } catch {
+    return path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../public');
+  }
+}
+
 async function build(argv: readonly string[]): Promise<void> {
   const { links, label } = await load(argv);
   const outDir = path.resolve(flag(argv, 'out') ?? 'dist');
 
-  await mkdir(outDir, { recursive: true });
-  await cp(path.resolve('public'), outDir, { recursive: true });
-  await writeFile(path.join(outDir, '_redirects'), renderRedirects(links, label));
+  const { content, warnings } = renderRedirects(links, label);
 
+  await mkdir(outDir, { recursive: true });
+  await cp(await resolveStaticDir(), outDir, { recursive: true });
+  await writeFile(path.join(outDir, '_redirects'), content);
+
+  for (const warning of warnings) console.warn(`warning: ${warning}`);
   console.log(`built ${links.length} links from ${label}`);
 }
 

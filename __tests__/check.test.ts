@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import type { Link } from '../src/registry.ts';
-import { renderRedirects } from '../src/render.ts';
+import { renderRedirects } from '../src/targets/pages.ts';
 import { findBrokenLinks } from '../src/verify.ts';
 
 function link(slug: string, destination = `https://github.com/acme/public/tree/main/${slug}`): Link {
@@ -50,7 +50,7 @@ describe('findBrokenLinks', () => {
 describe('renderRedirects', () => {
   test('every redirect is temporary', () => {
     // Destinations are expected to move. A cached 301 cannot be withdrawn.
-    const rendered = renderRedirects([link('a'), link('b')], 'test');
+    const rendered = renderRedirects([link('a'), link('b')], 'test').content;
     for (const line of rendered.split('\n').filter((entry) => entry.startsWith('/'))) {
       expect(line).toMatch(/ 302$/);
     }
@@ -58,11 +58,11 @@ describe('renderRedirects', () => {
   });
 
   test('records where the table came from', () => {
-    expect(renderRedirects([], 'acme/catalog@abc123')).toContain('acme/catalog@abc123');
+    expect(renderRedirects([], 'acme/catalog@abc123').content).toContain('acme/catalog@abc123');
   });
 
   test('output is stable for the same input', () => {
     const links = [link('a'), link('b')];
-    expect(renderRedirects(links, 'test')).toBe(renderRedirects(links, 'test'));
+    expect(renderRedirects(links, 'test').content).toBe(renderRedirects(links, 'test').content);
   });
 });

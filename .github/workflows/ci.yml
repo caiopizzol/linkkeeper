@@ -25,3 +25,23 @@ jobs:
       - run: bun run typecheck
 
       - run: bun test
+
+      # The published package is compiled JavaScript, because Node refuses to
+      # strip types under node_modules. Compiling here catches a break in that
+      # path before a release rather than during one.
+      - run: bun run compile
+
+      # Prove the CLI works the way people install it: packed, installed into a
+      # bare directory, and run with nothing else present.
+      - name: Smoke-test the packed CLI
+        run: |
+          set -euo pipefail
+          npm pack --silent
+          mkdir -p "$RUNNER_TEMP/install"
+          cd "$RUNNER_TEMP/install"
+          echo '{"name":"t","version":"1.0.0","private":true}' > package.json
+          npm install --silent --no-audit --no-fund "$GITHUB_WORKSPACE"/linkkeeper-*.tgz
+          echo '{"links":{"repo":"caiopizzol/linkkeeper","file":"links.example.json"}}' > linkkeeper.json
+          ./node_modules/.bin/linkkeeper build
+          test -f dist/_redirects
+          test -f dist/404.html
