@@ -54,7 +54,7 @@ redirect land in the same commit:
 
 ```json
 {
-  "$schema": "https://raw.githubusercontent.com/caiopizzol/linkkeeper/main/schema/links.schema.json",
+  "$schema": "https://raw.githubusercontent.com/caiopizzol/linkkeeper/v0.1.0/schema/links.schema.json",
   "version": 1,
   "defaults": { "repository": "you/repo", "ref": "main" },
   "links": {
@@ -76,8 +76,8 @@ the default repository.
 only when it differs.
 
 The `$schema` line gives you autocomplete and inline errors in most editors. It
-points at `main`, so it moves with the format. Once version 1 has survived
-real-world use it will be tagged and this URL should be pinned to that tag.
+points at a tag rather than `main`, so the rules your editor checks against are
+the ones the release shipped with, not whatever the format looks like today.
 
 ## Commands
 

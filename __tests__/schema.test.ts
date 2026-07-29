@@ -118,4 +118,11 @@ describe('schema metadata', () => {
     expect(schema.$id).toMatch(/^https:\/\//);
     expect(schema.properties.links.description).toMatch(/permanent/i);
   });
+
+  test('the published id points at a tag, not a moving branch', () => {
+    // An editor validating against `main` checks whatever the format looks like
+    // today, which is not necessarily what the installed version accepts.
+    expect(schema.$id).not.toMatch(/\/main\//);
+    expect(schema.$id).toMatch(/\/v\d+\.\d+\.\d+\//);
+  });
 });
