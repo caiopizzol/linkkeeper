@@ -1,16 +1,45 @@
 {
   "name": "linkkeeper",
   "version": "0.1.0",
-  "private": true,
-  "description": "Permanent URLs for things that move",
+  "description": "Permanent URLs for things that move: a redirect table built from a registry you keep in git.",
+  "keywords": [
+    "redirects",
+    "vanity-urls",
+    "permalinks",
+    "link-rot",
+    "cloudflare-pages",
+    "static-site"
+  ],
+  "homepage": "https://github.com/caiopizzol/linkkeeper#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/caiopizzol/linkkeeper.git"
+  },
+  "bugs": {
+    "url": "https://github.com/caiopizzol/linkkeeper/issues"
+  },
   "license": "MIT",
+  "author": "Caio Pizzol",
   "type": "module",
+  "bin": {
+    "linkkeeper": "./lib/cli.js"
+  },
+  "files": [
+    "lib",
+    "schema",
+    "public",
+    "links.example.json",
+    "README.md",
+    "LICENSE"
+  ],
   "engines": {
-    "bun": ">=1.3.0"
+    "node": ">=24"
   },
   "scripts": {
-    "build": "bun run src/cli.ts build",
-    "check": "bun run src/cli.ts check",
+    "build": "node src/cli.ts build",
+    "check": "node src/cli.ts check",
+    "compile": "tsc -p tsconfig.build.json",
+    "prepack": "tsc -p tsconfig.build.json",
     "test": "bun test",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
@@ -18,6 +47,7 @@
   },
   "devDependencies": {
     "@types/bun": "^1.3.8",
+    "@types/node": "^26.1.2",
     "prettier": "^3.3.3",
     "typescript": "^7.0.2"
   }
