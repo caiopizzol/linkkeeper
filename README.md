@@ -24,7 +24,8 @@ Two files in a repository of your own. No fork, no clone.
 npx linkkeeper build
 ```
 
-`linkkeeper.json` says where your links come from:
+`linkkeeper.json` says where your links come from (see
+[`linkkeeper.example.json`](linkkeeper.example.json)):
 
 ```json
 { "links": { "repo": "you/your-repo", "file": "links.json" } }
