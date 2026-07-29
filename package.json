@@ -29,6 +29,7 @@
     "schema",
     "public",
     "links.example.json",
+    "linkkeeper.example.json",
     "README.md",
     "LICENSE"
   ],
