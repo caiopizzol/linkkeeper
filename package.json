@@ -22,7 +22,7 @@
   "author": "Caio Pizzol",
   "type": "module",
   "bin": {
-    "linkkeeper": "./lib/cli.js"
+    "linkkeeper": "lib/cli.js"
   },
   "files": [
     "lib",
