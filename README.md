@@ -2,231 +2,208 @@
 
 Permanent URLs for things that move.
 
-Git forges redirect a repository when you rename it. They do not redirect a
-directory when you move it inside a repository. So every link you have ever
-published to `github.com/you/repo/tree/main/examples/thing` breaks the day you
-reorganize, silently, in blog posts and chat history and other people's
-documentation you cannot edit.
+GitHub keeps a repository URL working after a rename, but it does not redirect
+directories moved inside a repository. Linkkeeper puts a URL you control in
+front of those paths:
 
-linkkeeper puts a URL you own in front of that path:
-
-```
-go.example.com/react  ->  github.com/you/repo/tree/main/examples/getting-started/react
+```text
+go.example.com/react -> github.com/you/repo/tree/main/examples/react
 ```
 
-Move the directory, update one line, and the public URL keeps working.
+Move the directory, update its path in the registry, and the public URL keeps
+working.
 
 ## Quick start
 
-Two files in a repository of your own. No fork, no clone.
+Linkkeeper reads two files from your repository:
 
-```bash
-npx linkkeeper@0.1.0 build
+```text
+linkkeeper.json  Where the registry lives
+links.json       Permanent slugs and their current destinations
 ```
 
-`linkkeeper.json` says where your links come from (see
-[`linkkeeper.example.json`](linkkeeper.example.json)):
-
-```json
-{ "links": { "repo": "you/your-repo", "file": "links.json" } }
-```
-
-`links.json` is the registry, and lives in the repository whose paths move:
+Create `linkkeeper.json`:
 
 ```json
 {
-  "version": 1,
-  "defaults": { "repository": "you/your-repo", "ref": "main" },
-  "links": { "react": { "path": "examples/getting-started/react" } }
+  "links": {
+    "repo": "you/your-repo",
+    "file": "links.json"
+  }
 }
 ```
 
-That writes `dist/`, ready for Cloudflare Pages. Attach a domain and
-`your-domain.com/react` resolves to the path above, permanently.
-
-Upgrading is a version bump, not a merge: change `@0.1.0` and rerun. Your
-registry is yours; linkkeeper is a dependency.
-
-## The registry
-
-Keep a `links.json` in the repository whose paths move, so a move and its
-redirect land in the same commit:
+Create `links.json`:
 
 ```json
 {
   "$schema": "https://raw.githubusercontent.com/caiopizzol/linkkeeper/v0.1.0/schema/links.schema.json",
   "version": 1,
-  "defaults": { "repository": "you/repo", "ref": "main" },
+  "defaults": {
+    "repository": "you/your-repo",
+    "ref": "main"
+  },
   "links": {
-    "react": { "path": "examples/getting-started/react" },
-    "doc-rag": { "repository": "you/demos", "path": "rag" }
+    "react": {
+      "path": "examples/react"
+    }
   }
 }
 ```
 
-The key is the permanent public slug. Everything inside it may change.
+Build the redirect table:
 
-Repeating a key is rejected. JSON text can carry the same key twice and most
-parsers silently keep the last one, which for a registry keyed by permanent
-slug is precisely the failure it exists to prevent. Unknown properties are
-rejected too, so `repositry` is an error rather than a link quietly pointing at
-the default repository.
+```bash
+npx linkkeeper@0.1.0 check
+npx linkkeeper@0.1.0 build
+```
 
-`defaults` keeps the common case short. A link overrides `repository` or `ref`
-only when it differs.
+`check` verifies every destination. `build` writes a Cloudflare Pages redirect
+table and 404 page to `dist/`.
 
-The `$schema` line gives you autocomplete and inline errors in most editors. It
-points at a tag rather than `main`, so the rules your editor checks against are
-the ones the release shipped with, not whatever the format looks like today.
+Deploy `dist/` to Cloudflare Pages and attach your domain. From then on,
+`go.example.com/react` is the permanent URL. Pinning the Linkkeeper version
+keeps deployments reproducible; upgrading is an explicit version change.
+
+## Registry
+
+Each key under `links` is a permanent public slug. Its repository, ref, and
+path may change:
+
+```json
+{
+  "links": {
+    "react": {
+      "path": "examples/getting-started/react"
+    },
+    "demo": {
+      "repository": "you/demos",
+      "path": "showcase"
+    }
+  }
+}
+```
+
+Keep the registry beside the code whose paths move. The move and destination
+update can then land in the same commit, while Git retains the full path
+history.
+
+The schema provides editor autocomplete and catches malformed slugs,
+repositories, refs, and paths. Linkkeeper also rejects duplicate JSON keys and
+unknown properties instead of silently choosing a destination.
+
+Do not rename or reuse a published slug. Linkkeeper validates the registry as
+it exists today, so your repository must preserve the history of public slugs.
 
 ## Commands
 
 ```bash
-npx linkkeeper@0.1.0 build    # write dist/, ready for Cloudflare Pages
-npx linkkeeper@0.1.0 check    # request every destination, fail on any 404
+npx linkkeeper@0.1.0 check
+npx linkkeeper@0.1.0 build [--commit <sha>] [--out <directory>]
 ```
 
-Pin the version. `npx linkkeeper` without one silently follows the latest
-release, which is the opposite of what a permanent-URL tool should do to a
-deploy that was working yesterday.
+- `check` requests every destination and fails when one does not resolve.
+- `build` generates `_redirects` and copies static files into `dist/`.
+- `--commit` reads the registry at an exact Git commit.
+- `--out` changes the output directory.
 
-`build` takes `--commit <sha>` to pin the revision the registry is read at, and
-`--out <dir>` to write somewhere other than `dist/`.
+Put a custom `404.html` in `public/` next to `linkkeeper.json` to replace the
+default page.
 
-`dist/` holds the generated `_redirects` and a default 404 page. Drop your own
-`public/` next to `linkkeeper.json` to replace it.
+## Using an existing catalog
 
-## Deploying
-
-### Cloudflare Pages
-
-The whole output is static, so there is no server to run.
-
-1. Create a Pages project and point it at `dist/`.
-2. Attach your domain.
-3. Run `build` in CI on every registry change, then deploy `dist/`.
-
-A workflow that does that:
-
-```yaml
-- run: npx linkkeeper@0.1.0 check
-- run: npx linkkeeper@0.1.0 build
-- uses: cloudflare/wrangler-action@v4
-  with:
-    apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-    accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-    command: pages deploy ./dist --project-name=your-project --branch=main
-```
-
-Run `check` before `build`, so a broken destination fails the pipeline rather
-than reaching the deploy.
-
-### Rebuilding when the registry changes
-
-If the registry lives in a different repository from the deploy, that repository
-has to say when it changed. A `repository_dispatch` carrying the commit is
-enough:
-
-```yaml
-- run: |
-    gh api repos/you/your-deploy-repo/dispatches \
-      --field event_type=source-updated \
-      --field "client_payload[sha]=${GITHUB_SHA}"
-```
-
-The receiving workflow passes that SHA to `--commit`, so the deploy is pinned to
-the revision that triggered it rather than to whatever `main` holds by the time
-it runs.
-
-A dispatch that cannot authenticate should fail the job rather than skip
-quietly: a silent skip leaves the published redirects stale while every check
-stays green.
-
-## Already have a catalog?
-
-If the project keeps a machine-readable list of these things for other reasons,
-linkkeeper can read it in place rather than making you maintain a second list:
+If your project already has a machine-readable catalog, use it directly rather
+than maintaining a second registry:
 
 ```json
 {
   "catalog": {
     "repo": "you/repo",
     "files": ["examples/manifest.json"],
-    "repos": { "you/repo": { "repo": "you/repo", "ref": "main" } }
+    "repos": {
+      "you/repo": {
+        "repo": "you/repo",
+        "ref": "main"
+      }
+    }
   }
 }
 ```
 
-Entries need `id`, `slug`, `status`, `sourceRepo`, and `sourcePath`; anything
-else is ignored. Only entries carrying a slug are published. `repos` maps the
-repository names the catalog uses onto the ones links should point at, which is
-how a repository rename is absorbed without editing every entry.
+Catalog entries use `id`, `slug`, `status`, `sourceRepo`, and `sourcePath`.
+Only entries with a slug are published. Additional fields are ignored.
 
-Prefer `links.json` for a new project. This exists so adopting linkkeeper never
-means duplicating a list you already keep.
+Use `links.json` for a new project. Catalog input exists for projects that
+already own the same data in another format.
 
-## Design
+## Deployment notes
 
-**Redirects are 302, never 301.** The premise is that destinations move. A 301
-is cached by browsers indefinitely and cannot be withdrawn from the server, so
-one wrong permanent redirect outlives every fix you can deploy.
+Cloudflare Pages is the only deployment target in v0.1. The generated output is
+static, so there is no runtime or database to operate.
 
-**Sources are read at a commit, never at a branch.** A branch moves between
-reads, so a build could take two files from two revisions and have no record of
-what it shipped. The commit comes from whoever triggers the deploy.
+When the registry and deployment live in the same repository, rebuild on
+changes to `linkkeeper.json`, the registry, or `public/`.
 
-**Destinations are checked before they go live.** A registry only says what it
-believes. `check` requests every URL and fails on a 404, because a published
-link to a missing page reads as a deleted project.
+When they live in separate repositories, trigger the deployment with the exact
+source commit and pass it to `--commit`. This prevents one build from reading
+files from different revisions.
 
-**Paths and refs are validated before they reach output.** `_redirects` is
-line-oriented, so a newline inside a path would end one rule and begin another
-that nobody wrote — on your own domain, that is an open redirect. Paths must be
-relative, free of whitespace and control characters, and free of `..`;
-repository names must be `owner/name`; and the assembled destination must parse
-as an HTTPS URL.
+Redirects use `302`, not `301`, because destinations are expected to change.
+Paths and refs are validated before rendering so control characters or `..`
+cannot inject another rule into `_redirects`.
 
-**Slugs are permanent, including after withdrawal.** A published slug is a
-public API: renaming or reusing one breaks links you do not control. The tool
-enforces format and reserved names, but it reads the registry as it stands
-today, so it cannot know a slug used to be spelled differently. Not renaming one
-is a rule you keep, not a rule it enforces.
+## Development
 
-**Git is the path history.** Every destination change is a commit that records
-what moved, when, and why. There is no second history to keep in sync.
+Requirements:
+
+- Node.js 24 or newer for the published CLI
+- Bun 1.3.14 or newer for development
+
+Set up the repository:
+
+```bash
+git clone https://github.com/caiopizzol/linkkeeper.git
+cd linkkeeper
+bun install --frozen-lockfile
+```
+
+Run the same checks as CI:
+
+```bash
+bun run format:check
+bun run typecheck
+bun test
+bun run compile
+```
+
+The packed CLI smoke test in CI also installs the generated npm package in an
+empty directory. This catches packaging problems that do not appear when the
+CLI runs from the source tree.
+
+### Codebase
+
+```text
+src/cli.ts              CLI and output assembly
+src/config.ts           linkkeeper.json parsing
+src/links-file.ts       links.json parsing
+src/registry.ts         validation and normalized links
+src/source.ts           GitHub source resolution
+src/targets/pages.ts    Cloudflare Pages renderer
+src/verify.ts           destination checks
+schema/                 JSON Schema for links.json
+public/                 default static files
+__tests__/              unit and packaging coverage
+```
+
+All inputs become the same `{ slug, destination }` representation before a
+target renders them. Keep source parsing independent from deployment targets.
 
 ## Status
 
-Early, and not yet serving real traffic. The registry format has met one
-existing catalog shape and one hand-authored registry so far. If you try it on
-something different, the interesting question is what did not fit.
-
-Cloudflare Pages is the only deploy target today. Two things keep the next one
-cheap rather than a rewrite:
-
-- Every input becomes the same list of `{slug, destination}`. A target consumes
-  that list and knows nothing about where it came from, which is why
-  `src/targets/` exists as a directory with one file in it.
-- `src/` imports only `node:` builtins and has no dependencies. The CLI is
-  tested on Node 24, and the compiled output also runs under Bun. Deno is
-  untested — the import surface suggests it would work, which is not the same
-  as knowing.
-
-So a self-hosted target is `src/targets/serve.ts` plus a Dockerfile: read the
-same list, answer 302s over HTTP. That image then runs anywhere containers run,
-which is what "GCP support" would mean too — Cloud Run takes an OCI image, so it
-is a deployment guide rather than code. The same is true of Fly, Railway, ECS,
-and a VM.
-
-That is deliberately not built yet. Publishing a container means maintaining a
-second target, and there is no one on the second target. It is also worth
-knowing before writing one that Cloudflare does not document how `_redirects`
-treats query strings, trailing slashes, or case, so matching its behaviour
-exactly needs measuring first. Two targets that disagree on `?utm_source=x`
-would be worse than one target.
-
-Also not built, and the more likely next step: telling you a registered path
-vanished in a pull request, and suggesting where it moved.
+Linkkeeper v0.1 is used in production at
+[go.superdoc.dev](https://go.superdoc.dev). Cloudflare Pages is the only target
+today. A self-hosted server and container are intentionally deferred until
+real usage justifies maintaining a second runtime.
 
 ## License
 
