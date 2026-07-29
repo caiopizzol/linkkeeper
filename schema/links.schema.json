@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/caiopizzol/linkkeeper/main/schema/links.schema.json",
+  "$id": "https://raw.githubusercontent.com/caiopizzol/linkkeeper/v0.1.0/schema/links.schema.json",
   "title": "linkkeeper links registry",
   "description": "Permanent public slugs mapped to the paths they currently point at.",
   "type": "object",
