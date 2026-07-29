@@ -21,7 +21,7 @@ Move the directory, update one line, and the public URL keeps working.
 Two files in a repository of your own. No fork, no clone.
 
 ```bash
-npx linkkeeper build
+npx linkkeeper@0.1.0 build
 ```
 
 `linkkeeper.json` says where your links come from (see
@@ -44,8 +44,8 @@ npx linkkeeper build
 That writes `dist/`, ready for Cloudflare Pages. Attach a domain and
 `your-domain.com/react` resolves to the path above, permanently.
 
-Upgrading is a version bump, not a merge. Your registry is yours; linkkeeper is
-a dependency.
+Upgrading is a version bump, not a merge: change `@0.1.0` and rerun. Your
+registry is yours; linkkeeper is a dependency.
 
 ## The registry
 
@@ -82,9 +82,13 @@ real-world use it will be tagged and this URL should be pinned to that tag.
 ## Commands
 
 ```bash
-npx linkkeeper build    # write dist/, ready for Cloudflare Pages
-npx linkkeeper check    # request every destination, fail on any 404
+npx linkkeeper@0.1.0 build    # write dist/, ready for Cloudflare Pages
+npx linkkeeper@0.1.0 check    # request every destination, fail on any 404
 ```
+
+Pin the version. `npx linkkeeper` without one silently follows the latest
+release, which is the opposite of what a permanent-URL tool should do to a
+deploy that was working yesterday.
 
 `build` takes `--commit <sha>` to pin the revision the registry is read at, and
 `--out <dir>` to write somewhere other than `dist/`.
@@ -105,8 +109,8 @@ The whole output is static, so there is no server to run.
 A workflow that does that:
 
 ```yaml
-- run: npx linkkeeper check
-- run: npx linkkeeper build
+- run: npx linkkeeper@0.1.0 check
+- run: npx linkkeeper@0.1.0 build
 - uses: cloudflare/wrangler-action@v4
   with:
     apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -193,9 +197,9 @@ what moved, when, and why. There is no second history to keep in sync.
 
 ## Status
 
-Early. It is in production on one link namespace, and the registry format has
-met one existing catalog shape and one hand-authored registry so far. If you try
-it on something different, the interesting question is what did not fit.
+Early, and not yet serving real traffic. The registry format has met one
+existing catalog shape and one hand-authored registry so far. If you try it on
+something different, the interesting question is what did not fit.
 
 Cloudflare Pages is the only deploy target today. Two things keep the next one
 cheap rather than a rewrite:
@@ -203,8 +207,10 @@ cheap rather than a rewrite:
 - Every input becomes the same list of `{slug, destination}`. A target consumes
   that list and knows nothing about where it came from, which is why
   `src/targets/` exists as a directory with one file in it.
-- `src/` imports only `node:` builtins and has no dependencies, so it runs on
-  Node, Bun, and Deno as-is. A test asserts this rather than trusting it.
+- `src/` imports only `node:` builtins and has no dependencies. The CLI is
+  tested on Node 24, and the compiled output also runs under Bun. Deno is
+  untested — the import surface suggests it would work, which is not the same
+  as knowing.
 
 So a self-hosted target is `src/targets/serve.ts` plus a Dockerfile: read the
 same list, answer 302s over HTTP. That image then runs anywhere containers run,
