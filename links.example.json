@@ -1,0 +1,10 @@
+{
+  "$schema": "./schema/links.schema.json",
+  "version": 1,
+  "defaults": { "repository": "you/your-repo", "ref": "main" },
+  "links": {
+    "react": { "path": "examples/getting-started/react" },
+    "quickstart": { "path": "docs/quickstart" },
+    "demo": { "repository": "you/demos", "path": "showcase" }
+  }
+}

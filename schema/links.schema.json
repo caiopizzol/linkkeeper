@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/caiopizzol/linkkeeper/main/schema/links.schema.json",
+  "title": "linkkeeper links registry",
+  "description": "Permanent public slugs mapped to the paths they currently point at.",
+  "type": "object",
+  "required": ["version", "defaults", "links"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "version": {
+      "const": 1,
+      "description": "Registry format version. Bumped only for a breaking change."
+    },
+    "defaults": {
+      "type": "object",
+      "description": "Applied to every link that does not override them.",
+      "required": ["repository", "ref"],
+      "additionalProperties": false,
+      "properties": {
+        "repository": {
+          "$ref": "#/$defs/repository"
+        },
+        "ref": {
+          "$ref": "#/$defs/ref"
+        }
+      }
+    },
+    "links": {
+      "type": "object",
+      "description": "Each key is a permanent public slug. Renaming or removing one breaks every link already published to it.",
+      "propertyNames": {
+        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+        "not": {
+          "enum": ["404", "api", "assets", "docs", "health", "index", "live", "source"]
+        }
+      },
+      "additionalProperties": {
+        "type": "object",
+        "required": ["path"],
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!\\.\\.(/|$))(?!.*/\\.\\.(/|$))(?!/)[^\\s\\p{Cc}]+$",
+            "description": "Path within the repository, relative and free of '..'. Expected to change when things move."
+          },
+          "repository": {
+            "$ref": "#/$defs/repository"
+          },
+          "ref": {
+            "$ref": "#/$defs/ref"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "repository": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$",
+      "description": "Repository as owner/name."
+    },
+    "ref": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^\\s\\p{Cc}]+$",
+      "description": "Branch or tag to link at."
+    }
+  }
+}
