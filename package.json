@@ -40,6 +40,7 @@
     "build": "node src/cli.ts build",
     "check": "node src/cli.ts check",
     "compile": "tsc -p tsconfig.build.json",
+    "prepare": "tsc -p tsconfig.build.json",
     "prepack": "tsc -p tsconfig.build.json",
     "test": "bun test",
     "typecheck": "tsc --noEmit",
