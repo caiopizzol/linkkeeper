@@ -78,11 +78,18 @@ describe('schema and runtime agree', () => {
   test.each([
     ['react', true],
     ['track-changes', true],
+    ['examples/react', true],
+    ['examples/getting-started/react', true],
     ['React', false],
     ['my_thing', false],
     ['my--thing', false],
     ['-a', false],
     ['a-', false],
+    ['/examples/react', false],
+    ['examples/react/', false],
+    ['examples//react', false],
+    ['examples/../react', false],
+    ['./examples/react', false],
   ])('slug %p', (slug, expected) => {
     expect(schemaAccepts('slug', slug)).toBe(expected);
     expect(runtimeAccepts({ path: 'examples/x' }, slug)).toBe(expected);
@@ -110,8 +117,16 @@ describe('schema metadata', () => {
     expect(schema.properties.version.const).toBe(LINKS_FILE_VERSION);
   });
 
-  test('reserves exactly the slugs the code reserves', () => {
-    expect([...schema.properties.links.propertyNames.not.enum].sort()).toEqual([...RESERVED_SLUGS].sort());
+  test('reserves the same first route segments as the code', () => {
+    const reservedPattern = new RegExp(schema.properties.links.propertyNames.not.pattern, 'u');
+    for (const segment of RESERVED_SLUGS) {
+      expect(reservedPattern.test(segment)).toBe(true);
+      expect(reservedPattern.test(`${segment}/child`)).toBe(true);
+      expect(runtimeAccepts({ path: 'examples/x' }, segment)).toBe(false);
+      expect(runtimeAccepts({ path: 'examples/x' }, `${segment}/child`)).toBe(false);
+    }
+    expect(reservedPattern.test('examples/docs')).toBe(false);
+    expect(runtimeAccepts({ path: 'examples/x' }, 'examples/docs')).toBe(true);
   });
 
   test('is resolvable and self-describing', () => {

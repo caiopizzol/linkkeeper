@@ -52,6 +52,23 @@ describe('building links', () => {
     ]);
   });
 
+  test('a nested route may point at the same path as a flat compatibility route', () => {
+    const file = parse({
+      links: {
+        'examples/react': { path: 'examples/react' },
+        react: { path: 'examples/react' },
+      },
+    });
+    expect(linksFromFile(file, 'links.json')).toEqual([
+      {
+        slug: 'examples/react',
+        id: 'examples/react',
+        destination: 'https://github.com/acme/product/tree/main/examples/react',
+      },
+      { slug: 'react', id: 'react', destination: 'https://github.com/acme/product/tree/main/examples/react' },
+    ]);
+  });
+
   test('defaults fill in what a link does not override', () => {
     const file = parse({
       links: {

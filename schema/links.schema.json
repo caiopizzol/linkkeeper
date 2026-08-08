@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/caiopizzol/linkkeeper/v0.1.0/schema/links.schema.json",
+  "$id": "https://raw.githubusercontent.com/caiopizzol/linkkeeper/v0.2.0/schema/links.schema.json",
   "title": "linkkeeper links registry",
-  "description": "Permanent public slugs mapped to the paths they currently point at.",
+  "description": "Permanent public routes mapped to the paths they currently point at.",
   "type": "object",
   "required": ["version", "defaults", "links"],
   "additionalProperties": false,
@@ -30,11 +30,11 @@
     },
     "links": {
       "type": "object",
-      "description": "Each key is a permanent public slug. Renaming or removing one breaks every link already published to it.",
+      "description": "Each key is a permanent public route. Renaming or removing one breaks every link already published to it.",
       "propertyNames": {
-        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*(?:/[a-z0-9]+(?:-[a-z0-9]+)*)*$",
         "not": {
-          "enum": ["404", "api", "assets", "docs", "health", "index", "live", "source"]
+          "pattern": "^(?:404|api|assets|docs|health|index|live|source)(?:/|$)"
         }
       },
       "additionalProperties": {

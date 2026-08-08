@@ -56,7 +56,7 @@ export class RegistryError extends Error {}
  */
 export const PUBLISHABLE_STATUSES: ReadonlySet<string> = new Set(['active', 'hidden', 'archived']);
 
-const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const ROUTE_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*(?:\/[a-z0-9]+(?:-[a-z0-9]+)*)*$/;
 
 /** `owner/name`, the only shape a repository reference may take. */
 const REPO_PATTERN = /^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/;
@@ -114,15 +114,18 @@ function assertSafePath(path: string, label: string): void {
 }
 
 /**
- * Check a slug is legal to publish. Shared by every input shape so the rules a
+ * Check a route is legal to publish. Shared by every input shape so the rules a
  * URL must satisfy cannot drift between them.
  */
 export function assertPublishableSlug(slug: string, origin: string): void {
-  if (!SLUG_PATTERN.test(slug)) {
-    throw new RegistryError(`${origin}: slug '${slug}' must be lowercase kebab-case`);
+  if (!ROUTE_PATTERN.test(slug)) {
+    throw new RegistryError(`${origin}: route '${slug}' must contain lowercase kebab-case path segments`);
   }
-  if (RESERVED_SLUGS.has(slug)) {
-    throw new RegistryError(`${origin}: slug '${slug}' is reserved for a service route`);
+  const firstSegment = slug.split('/', 1)[0] ?? '';
+  if (RESERVED_SLUGS.has(firstSegment)) {
+    throw new RegistryError(
+      `${origin}: route '${slug}' starts with '${firstSegment}', which is reserved for the service`,
+    );
   }
 }
 

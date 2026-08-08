@@ -3,6 +3,7 @@
   "version": 1,
   "defaults": { "repository": "you/your-repo", "ref": "main" },
   "links": {
+    "examples/react": { "path": "examples/getting-started/react" },
     "react": { "path": "examples/getting-started/react" },
     "quickstart": { "path": "docs/quickstart" },
     "demo": { "repository": "you/demos", "path": "showcase" }
