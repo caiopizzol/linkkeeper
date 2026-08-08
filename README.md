@@ -7,7 +7,7 @@ directories moved inside a repository. Linkkeeper puts a URL you control in
 front of those paths:
 
 ```text
-go.example.com/react -> github.com/you/repo/tree/main/examples/react
+go.example.com/examples/react -> github.com/you/repo/tree/main/examples/react
 ```
 
 Move the directory, update its path in the registry, and the public URL keeps
@@ -19,7 +19,7 @@ Linkkeeper reads two files from your repository:
 
 ```text
 linkkeeper.json  Where the registry lives
-links.json       Permanent slugs and their current destinations
+links.json       Permanent routes and their current destinations
 ```
 
 Create `linkkeeper.json`:
@@ -37,13 +37,16 @@ Create `links.json`:
 
 ```json
 {
-  "$schema": "https://raw.githubusercontent.com/caiopizzol/linkkeeper/v0.1.0/schema/links.schema.json",
+  "$schema": "https://raw.githubusercontent.com/caiopizzol/linkkeeper/v0.2.0/schema/links.schema.json",
   "version": 1,
   "defaults": {
     "repository": "you/your-repo",
     "ref": "main"
   },
   "links": {
+    "examples/react": {
+      "path": "examples/react"
+    },
     "react": {
       "path": "examples/react"
     }
@@ -54,26 +57,29 @@ Create `links.json`:
 Build the redirect table:
 
 ```bash
-npx linkkeeper@0.1.0 check
-npx linkkeeper@0.1.0 build
+npx linkkeeper@0.2.0 check
+npx linkkeeper@0.2.0 build
 ```
 
 `check` verifies every destination. `build` writes a Cloudflare Pages redirect
 table and 404 page to `dist/`.
 
 Deploy `dist/` to Cloudflare Pages and attach your domain. From then on,
-`go.example.com/react` is the permanent URL. Pinning the Linkkeeper version
-keeps deployments reproducible; upgrading is an explicit version change.
+`go.example.com/examples/react` is the permanent canonical URL. The shorter
+`go.example.com/react` entry is an optional compatibility route to the same
+destination. Pinning the Linkkeeper version keeps deployments reproducible;
+upgrading is an explicit version change.
 
 ## Registry
 
-Each key under `links` is a permanent public slug. Its repository, ref, and
+Each key under `links` is a permanent public route. A route may contain multiple
+lowercase kebab-case segments, such as `examples/react`. Its repository, ref, and
 path may change:
 
 ```json
 {
   "links": {
-    "react": {
+    "examples/react": {
       "path": "examples/getting-started/react"
     },
     "demo": {
@@ -88,18 +94,18 @@ Keep the registry beside the code whose paths move. The move and destination
 update can then land in the same commit, while Git retains the full path
 history.
 
-The schema provides editor autocomplete and catches malformed slugs,
+The schema provides editor autocomplete and catches malformed routes,
 repositories, refs, and paths. Linkkeeper also rejects duplicate JSON keys and
 unknown properties instead of silently choosing a destination.
 
-Do not rename or reuse a published slug. Linkkeeper validates the registry as
-it exists today, so your repository must preserve the history of public slugs.
+Do not rename or reuse a published route. Linkkeeper validates the registry as
+it exists today, so your repository must preserve the history of public routes.
 
 ## Commands
 
 ```bash
-npx linkkeeper@0.1.0 check
-npx linkkeeper@0.1.0 build [--commit <sha>] [--out <directory>]
+npx linkkeeper@0.2.0 check
+npx linkkeeper@0.2.0 build [--commit <sha>] [--out <directory>]
 ```
 
 - `check` requests every destination and fails when one does not resolve.
@@ -130,15 +136,16 @@ than maintaining a second registry:
 }
 ```
 
-Catalog entries use `id`, `slug`, `status`, `sourceRepo`, and `sourcePath`.
-Only entries with a slug are published. Additional fields are ignored.
+Catalog entries use their existing `id`, `slug`, `status`, `sourceRepo`, and
+`sourcePath` fields. Only entries with a slug are published. Additional fields
+are ignored. Native registries should use path-shaped route keys directly.
 
 Use `links.json` for a new project. Catalog input exists for projects that
 already own the same data in another format.
 
 ## Deployment notes
 
-Cloudflare Pages is the only deployment target in v0.1. The generated output is
+Cloudflare Pages is the only deployment target in v0.2. The generated output is
 static, so there is no runtime or database to operate.
 
 When the registry and deployment live in the same repository, rebuild on

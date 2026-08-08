@@ -1,6 +1,6 @@
 {
   "name": "linkkeeper",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Permanent URLs for things that move: a redirect table built from a registry you keep in git.",
   "keywords": [
     "redirects",

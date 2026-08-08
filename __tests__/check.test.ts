@@ -65,4 +65,10 @@ describe('renderRedirects', () => {
     const links = [link('a'), link('b')];
     expect(renderRedirects(links, 'test').content).toBe(renderRedirects(links, 'test').content);
   });
+
+  test('renders a nested route without changing flat routes', () => {
+    const rendered = renderRedirects([link('react'), link('examples/react')], 'test').content;
+    expect(rendered).toContain('/react https://github.com/acme/public/tree/main/react 302');
+    expect(rendered).toContain('/examples/react https://github.com/acme/public/tree/main/examples/react 302');
+  });
 });

@@ -44,17 +44,41 @@ describe('publishing', () => {
   });
 });
 
-describe('slug rules', () => {
+describe('route rules', () => {
   test('a duplicate slug is rejected', () => {
     expect(() => build([entry({ id: 'first' }), entry({ id: 'second' })])).toThrow(/claimed by both/);
   });
 
-  test.each(['Thing', 'my_thing', 'my--thing', '-thing', 'thing-', 'thing!'])('rejects the slug %p', (slug) => {
-    expect(() => build([entry({ slug })])).toThrow(/kebab-case/);
+  test('publishes a nested route', () => {
+    expect(build([entry({ slug: 'examples/react' })])[0]?.slug).toBe('examples/react');
   });
 
-  test.each(['docs', 'live', 'source', 'health', '404'])('rejects the reserved slug %p', (slug) => {
-    expect(() => build([entry({ slug })])).toThrow(/reserved/);
+  test.each([
+    'Thing',
+    'my_thing',
+    'my--thing',
+    '-thing',
+    'thing-',
+    'thing!',
+    '/thing',
+    'thing/',
+    'examples//react',
+    'examples/React',
+    'examples/../react',
+    './examples/react',
+  ])('rejects the route %p', (slug) => {
+    expect(() => build([entry({ slug })])).toThrow(/kebab-case path segments/);
+  });
+
+  test.each(['docs', 'live', 'source', 'health', '404', 'api/status', 'assets/icons'])(
+    'rejects the reserved route %p',
+    (slug) => {
+      expect(() => build([entry({ slug })])).toThrow(/reserved/);
+    },
+  );
+
+  test('allows a reserved name below a non-reserved first segment', () => {
+    expect(build([entry({ slug: 'examples/docs' })])).toHaveLength(1);
   });
 
   test.each(['active', 'hidden', 'archived'])('publishes a %p entry, so the URL outlives the entry', (status) => {
