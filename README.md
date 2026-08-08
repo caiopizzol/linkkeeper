@@ -1,5 +1,7 @@
 # linkkeeper
 
+[![npm version](https://img.shields.io/npm/v/linkkeeper.svg)](https://www.npmjs.com/package/linkkeeper)
+
 Permanent URLs for things that move.
 
 GitHub keeps a repository URL working after a rename, but it does not redirect
