@@ -43,6 +43,7 @@
     "prepare": "tsc -p tsconfig.build.json",
     "prepack": "tsc -p tsconfig.build.json",
     "test": "bun test",
+    "verify": "prettier --check . && tsc --noEmit && bun test",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
