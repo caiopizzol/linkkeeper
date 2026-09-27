@@ -13,6 +13,7 @@ import { cp, mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { isCommand, type Command, type FlagReader } from './commands.ts';
 import { parseConfig, type FileConfig } from './config.ts';
 import { RegistryError, buildLinks, type Link } from './registry.ts';
 import { linksFromFile, parseLinksFile } from './links-file.ts';
@@ -45,9 +46,9 @@ async function resolveLinks(config: FileConfig, commit: string): Promise<Link[]>
   return buildLinks(await fetchEntries(config.source, commit), config, label);
 }
 
-async function load(argv: readonly string[]): Promise<{ links: Link[]; label: string }> {
+async function load(flag: (name: 'commit') => string | undefined): Promise<{ links: Link[]; label: string }> {
   const config = parseConfig(await readFile(path.resolve(CONFIG_FILE), 'utf8'), CONFIG_FILE);
-  const commit = flag(argv, 'commit') ?? (await resolveCommit(sourceRepo(config), 'HEAD'));
+  const commit = flag('commit') ?? (await resolveCommit(sourceRepo(config), 'HEAD'));
 
   return { links: await resolveLinks(config, commit), label: `${sourceRepo(config)}@${commit}` };
 }
@@ -69,9 +70,9 @@ async function resolveStaticDir(): Promise<string> {
   }
 }
 
-async function build(argv: readonly string[]): Promise<void> {
-  const { links, label } = await load(argv);
-  const outDir = path.resolve(flag(argv, 'out') ?? 'dist');
+async function build(flag: FlagReader<'build'>): Promise<void> {
+  const { links, label } = await load(flag);
+  const outDir = path.resolve(flag('out') ?? 'dist');
 
   const { content, warnings } = renderRedirects(links, label);
 
@@ -83,8 +84,8 @@ async function build(argv: readonly string[]): Promise<void> {
   console.log(`built ${links.length} links from ${label}`);
 }
 
-async function check(argv: readonly string[]): Promise<void> {
-  const { links, label } = await load(argv);
+async function check(flag: FlagReader<'check'>): Promise<void> {
+  const { links, label } = await load(flag);
   const failures = await findBrokenLinks(links);
 
   if (failures.length > 0) {
@@ -99,11 +100,12 @@ async function check(argv: readonly string[]): Promise<void> {
   console.log(`all ${links.length} destinations resolve (${label})`);
 }
 
+const handlers: { [C in Command]: (flag: FlagReader<C>) => Promise<void> } = { build, check };
+
 const [command = '', ...rest] = process.argv.slice(2);
 
 try {
-  if (command === 'build') await build(rest);
-  else if (command === 'check') await check(rest);
+  if (isCommand(command)) await handlers[command]((name: string) => flag(rest, name));
   else {
     console.error('usage: linkkeeper <build|check> [--commit <sha>] [--out <dir>]');
     process.exit(1);
