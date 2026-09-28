@@ -4,7 +4,7 @@ name: Test integrity
 # judges it. The action reads git only and never checks out or runs the pull request's code.
 on:
   pull_request_target:
-    types: [opened, synchronize, reopened, labeled, unlabeled]
+    types: [opened, synchronize, reopened, edited, labeled, unlabeled]
 
 permissions:
   contents: read
