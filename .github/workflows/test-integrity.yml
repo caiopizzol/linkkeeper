@@ -9,6 +9,12 @@ on:
 permissions:
   contents: read
 
+# A run started by a label change can finish before an older run on the same commit. Only the
+# latest run for a pull request counts, so an older result never overwrites a newer one.
+concurrency:
+  group: test-integrity-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   test-integrity:
     name: Test integrity
