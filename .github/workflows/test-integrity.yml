@@ -1,0 +1,17 @@
+name: Test integrity
+
+# Runs the base branch's copy of this workflow, so a pull request cannot change the check that
+# judges it. The action reads git only and never checks out or runs the pull request's code.
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+jobs:
+  test-integrity:
+    name: Test integrity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: caiopizzol/skills/.github/actions/test-integrity@36dbb67639f637a3bf43314f8183aaa8a5e67535
