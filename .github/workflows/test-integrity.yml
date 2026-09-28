@@ -20,4 +20,4 @@ jobs:
     name: Test integrity
     runs-on: ubuntu-latest
     steps:
-      - uses: caiopizzol/skills/.github/actions/test-integrity@36dbb67639f637a3bf43314f8183aaa8a5e67535
+      - uses: caiopizzol/skills/.github/actions/test-integrity@d8185b941f065c5ab2b1dbcf46dc300af736ecb5
